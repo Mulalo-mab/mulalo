@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather App for Cape Town</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Cape Town Weather App</h1>
+      <div id="location-name">Your Location</div>
+      <div id="current-weather">
+        <p>
+          <strong>Current Temperature:</strong>
+          <span id="current-temperature">Loading...</span> °C
+        </p>
+        <p>
+          <strong>Current Wind Speed:</strong>
+          <span id="current-wind-speed">Loading...</span> m/s
+        </p>
+      </div>
+      <div id="search-section">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search for another place..."
+        />
+        <button id="search-button">Search</button>
+      </div>
+      <button id="location-button">Use My Location</button>
+      <h2>Hourly Forecast</h2>
+      <table id="hourly-forecast">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Temperature (°C)</th>
+            <th>Relative Humidity (%)</th>
+            <th>Wind Speed (m/s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="4">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>7-Day Forecast</h2>
+      <div id="daily-forecast">
+        <ul id="daily-list">
+          <li>Loading...</li>
+        </ul>
+      </div>
+    </div>
+    <script src="main.js"></script>
+  </body>
+</html>
