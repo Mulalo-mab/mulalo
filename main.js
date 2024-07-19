@@ -27,22 +27,35 @@ async function fetchWeatherData() {
     document.getElementById("current-wind-speed").textContent =
       currentWindSpeed.toFixed(1); // Display wind speed to one decimal place
 
-    // Extract hourly weather data
+    // Extract hourly weather data for the current day
     const hourlyTimes = data.hourly.time;
     const hourlyTemperatures = data.hourly.temperature_2m;
     const hourlyHumidities = data.hourly.relative_humidity_2m;
     const hourlyWindSpeeds = data.hourly.wind_speed_10m;
 
-    // Populate the hourly forecast table with weather data
+    // Get the index of the current hour
+    const currentHourIndex = hourlyTimes.findIndex(time => {
+      const hour = new Date(time).getHours();
+      const currentHour = new Date().getHours();
+      return hour === currentHour;
+    });
+
+    // Filter hourly data to only include current and future hours
+    const filteredHourlyTimes = hourlyTimes.slice(currentHourIndex);
+    const filteredHourlyTemperatures = hourlyTemperatures.slice(currentHourIndex);
+    const filteredHourlyHumidities = hourlyHumidities.slice(currentHourIndex);
+    const filteredHourlyWindSpeeds = hourlyWindSpeeds.slice(currentHourIndex);
+
+    // Populate the hourly forecast table with weather data for the current day
     const tbody = document.querySelector("#hourly-forecast tbody");
     tbody.innerHTML = ""; // Clear any existing content
-    for (let i = 0; i < hourlyTimes.length; i++) {
+    for (let i = 0; i < filteredHourlyTimes.length; i++) {
       const row = document.createElement("tr");
       row.innerHTML = `
-                <td>${hourlyTimes[i]}</td>
-                <td>${hourlyTemperatures[i].toFixed(1)}</td>
-                <td>${hourlyHumidities[i]}</td>
-                <td>${hourlyWindSpeeds[i].toFixed(1)}</td>
+                <td>${filteredHourlyTimes[i]}</td>
+                <td>${filteredHourlyTemperatures[i].toFixed(1)}</td>
+                <td>${filteredHourlyHumidities[i]}</td>
+                <td>${filteredHourlyWindSpeeds[i].toFixed(1)}</td>
             `;
       tbody.appendChild(row); // Add the row to the table body
     }
