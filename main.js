@@ -10,11 +10,9 @@ let apiURL = `${apiURLBase}?latitude=-33.92&longitude=18.42&daily=temperature_2m
 // Function to fetch weather data from the Open-Meteo API
 async function fetchWeatherData() {
   try {
-    // Fetch data from the Open-Meteo API
+    // Fetch weather data from the API
     const response = await fetch(apiURL);
-    // Check if the response is ok (status in the range 200-299)
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    // Parse the JSON response
     const data = await response.json();
 
     // Extract current weather data
@@ -33,32 +31,33 @@ async function fetchWeatherData() {
     const hourlyHumidities = data.hourly.relative_humidity_2m;
     const hourlyWindSpeeds = data.hourly.wind_speed_10m;
 
-    // Get the index of the current hour
-    const currentHourIndex = hourlyTimes.findIndex(time => {
-      const hour = new Date(time).getHours();
-      const currentHour = new Date().getHours();
-      return hour === currentHour;
-    });
+    // Get the current time
+    const now = new Date();
 
     // Filter hourly data to only include current and future hours
-    const filteredHourlyTimes = hourlyTimes.slice(currentHourIndex);
-    const filteredHourlyTemperatures = hourlyTemperatures.slice(currentHourIndex);
-    const filteredHourlyHumidities = hourlyHumidities.slice(currentHourIndex);
-    const filteredHourlyWindSpeeds = hourlyWindSpeeds.slice(currentHourIndex);
+    const filteredHourlyData = hourlyTimes.map((time, index) => {
+      const hour = new Date(time);
+      return {
+        time,
+        temperature: hourlyTemperatures[index],
+        humidity: hourlyHumidities[index],
+        windSpeed: hourlyWindSpeeds[index]
+      };
+    }).filter(hourData => new Date(hourData.time) >= now);
 
     // Populate the hourly forecast table with weather data for the current day
     const tbody = document.querySelector("#hourly-forecast tbody");
     tbody.innerHTML = ""; // Clear any existing content
-    for (let i = 0; i < filteredHourlyTimes.length; i++) {
+    filteredHourlyData.forEach(hourData => {
       const row = document.createElement("tr");
       row.innerHTML = `
-                <td>${filteredHourlyTimes[i]}</td>
-                <td>${filteredHourlyTemperatures[i].toFixed(1)}</td>
-                <td>${filteredHourlyHumidities[i]}</td>
-                <td>${filteredHourlyWindSpeeds[i].toFixed(1)}</td>
-            `;
+        <td>${hourData.time}</td>
+        <td>${hourData.temperature.toFixed(1)}</td>
+        <td>${hourData.humidity}</td>
+        <td>${hourData.windSpeed.toFixed(1)}</td>
+      `;
       tbody.appendChild(row); // Add the row to the table body
-    }
+    });
 
     // Extract daily weather data
     const dailyTimes = data.daily.time;
@@ -79,24 +78,83 @@ async function fetchWeatherData() {
       const precipitation = dailyPrecipitation[i].toFixed(1); // Get the amount of precipitation for the day
       const weatherCode = dailyWeatherCodes[i]; // Get the weather code for the day
 
-      // Get a textual description of the weather
-      const weatherDescription = getWeatherDescription(weatherCode);
+      // Get a textual description and icon class of the weather
+      const { description, icon } = getWeatherDescription(weatherCode);
 
       // Create a list item for the daily forecast
       const listItem = document.createElement("li");
+      listItem.classList.add("daily-item");
       listItem.innerHTML = `
-                <h3>${day} (${dailyTimes[i]})</h3>
-                <p><strong>Max Temp:</strong> ${maxTemp} °C</p>
-                <p><strong>Min Temp:</strong> ${minTemp} °C</p>
-                <p><strong>Precipitation:</strong> ${precipitation} mm</p>
-                <p><strong>Weather:</strong> ${weatherDescription}</p>
-            `;
+        <h3>${day} (${dailyTimes[i]})</h3>
+        <p><strong>Max Temp:</strong> ${maxTemp} °C</p>
+        <p><strong>Min Temp:</strong> ${minTemp} °C</p>
+        <p><strong>Precipitation:</strong> ${precipitation} mm</p>
+        <p><strong>Weather:</strong> <i class="${icon}"></i> ${description}</p>
+        <button class="expand-btn">Show Hourly Details</button>
+        <table class="hourly-details" style="display: none;">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Temperature (°C)</th>
+              <th>Relative Humidity (%)</th>
+              <th>Wind Speed (m/s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="4">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
       dailyList.appendChild(listItem); // Add the list item to the daily forecast list
     }
+
+    // Add event listeners to the expand buttons
+    document.querySelectorAll('.expand-btn').forEach(button => {
+      button.addEventListener('click', async () => {
+        const hourlyDetails = button.nextElementSibling;
+        if (hourlyDetails.style.display === 'none' || !hourlyDetails.style.display) {
+          hourlyDetails.style.display = 'table';
+          button.textContent = 'Hide Hourly Details';
+
+          const listItem = button.parentElement;
+          const day = listItem.querySelector('h3').textContent.split(' ')[1].replace(/[\(\)]/g, '');
+
+          // Get hourly data for this day
+          const dayStartIndex = hourlyTimes.findIndex(time => time.startsWith(day));
+          const dailyHourlyData = hourlyTimes.slice(dayStartIndex, dayStartIndex + 24).map((time, index) => ({
+            time,
+            temperature: hourlyTemperatures[dayStartIndex + index],
+            humidity: hourlyHumidities[dayStartIndex + index],
+            windSpeed: hourlyWindSpeeds[dayStartIndex + index]
+          })).filter(hourData => new Date(hourData.time) >= now);
+
+          const hourlyTbody = hourlyDetails.querySelector('tbody');
+          hourlyTbody.innerHTML = '';
+          dailyHourlyData.forEach(hourData => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${hourData.time}</td>
+              <td>${hourData.temperature.toFixed(1)}</td>
+              <td>${hourData.humidity}</td>
+              <td>${hourData.windSpeed.toFixed(1)}</td>
+            `;
+            hourlyTbody.appendChild(row);
+          });
+
+        } else {
+          hourlyDetails.style.display = 'none';
+          button.textContent = 'Show Hourly Details';
+        }
+      });
+    });
 
     // Fetch and display the location name based on latitude and longitude
     const locationName = await getLocationName(data.latitude, data.longitude);
     document.getElementById("location-name").textContent = locationName; // Display the location name
+
   } catch (error) {
     // Handle errors that occur during the fetch process
     console.error("Error fetching weather data:", error);
@@ -110,137 +168,109 @@ async function fetchWeatherData() {
   }
 }
 
-// Function to get a weather description based on the weather code
+// Function to get a weather description and icon class based on the weather code
 function getWeatherDescription(code) {
   switch (code) {
     case 0:
-      return "Clear sky"; // Weather code 0 represents clear sky
+      return { description: "Clear sky", icon: "fas fa-sun" };
     case 1:
-      return "Mainly clear"; // Weather code 1 represents mainly clear
+      return { description: "Mainly clear", icon: "fas fa-sun" };
     case 2:
-      return "Partly cloudy"; // Weather code 2 represents partly cloudy
+      return { description: "Partly cloudy", icon: "fas fa-cloud-sun" };
     case 3:
-      return "Overcast"; // Weather code 3 represents overcast
+      return { description: "Overcast", icon: "fas fa-cloud" };
     case 45:
-      return "Fog"; // Weather code 45 represents fog
+      return { description: "Fog", icon: "fas fa-smog" };
     case 48:
-      return "Rime fog"; // Weather code 48 represents rime fog
+      return { description: "Depositing rime fog", icon: "fas fa-smog" };
     case 51:
-      return "Drizzle light"; // Weather code 51 represents light drizzle
+      return { description: "Light drizzle", icon: "fas fa-cloud-rain" };
     case 53:
-      return "Drizzle moderate"; // Weather code 53 represents moderate drizzle
+      return { description: "Moderate drizzle", icon: "fas fa-cloud-rain" };
     case 55:
-      return "Drizzle dense"; // Weather code 55 represents dense drizzle
+      return { description: "Dense drizzle", icon: "fas fa-cloud-rain" };
     case 56:
-      return "Freezing drizzle light"; // Weather code 56 represents light freezing drizzle
+      return { description: "Freezing light drizzle", icon: "fas fa-cloud-showers-heavy" };
     case 57:
-      return "Freezing drizzle dense"; // Weather code 57 represents dense freezing drizzle
+      return { description: "Freezing dense drizzle", icon: "fas fa-cloud-showers-heavy" };
     case 61:
-      return "Showers light"; // Weather code 61 represents light showers
+      return { description: "Slight rain", icon: "fas fa-cloud-rain" };
     case 63:
-      return "Showers moderate"; // Weather code 63 represents moderate showers
+      return { description: "Moderate rain", icon: "fas fa-cloud-rain" };
     case 65:
-      return "Showers heavy"; // Weather code 65 represents heavy showers
+      return { description: "Heavy rain", icon: "fas fa-cloud-showers-heavy" };
     case 66:
-      return "Freezing showers light"; // Weather code 66 represents light freezing showers
+      return { description: "Freezing light rain", icon: "fas fa-cloud-showers-heavy" };
     case 67:
-      return "Freezing showers heavy"; // Weather code 67 represents heavy freezing showers
+      return { description: "Freezing heavy rain", icon: "fas fa-cloud-showers-heavy" };
     case 71:
-      return "Snow fall light"; // Weather code 71 represents light snow fall
+      return { description: "Slight snow fall", icon: "fas fa-snowflake" };
     case 73:
-      return "Snow fall moderate"; // Weather code 73 represents moderate snow fall
+      return { description: "Moderate snow fall", icon: "fas fa-snowflake" };
     case 75:
-      return "Snow fall heavy"; // Weather code 75 represents heavy snow fall
+      return { description: "Heavy snow fall", icon: "fas fa-snowflake" };
     case 77:
-      return "Snow grains"; // Weather code 77 represents snow grains
+      return { description: "Snow grains", icon: "fas fa-snowflake" };
     case 80:
-      return "Showers of rain light"; // Weather code 80 represents light rain showers
+      return { description: "Slight rain showers", icon: "fas fa-cloud-showers-heavy" };
     case 81:
-      return "Showers of rain moderate"; // Weather code 81 represents moderate rain showers
+      return { description: "Moderate rain showers", icon: "fas fa-cloud-showers-heavy" };
     case 82:
-      return "Showers of rain heavy"; // Weather code 82 represents heavy rain showers
+      return { description: "Violent rain showers", icon: "fas fa-cloud-showers-heavy" };
     case 85:
-      return "Snow showers light"; // Weather code 85 represents light snow showers
+      return { description: "Slight snow showers", icon: "fas fa-snowflake" };
     case 86:
-      return "Snow showers heavy"; // Weather code 86 represents heavy snow showers
+      return { description: "Heavy snow showers", icon: "fas fa-snowflake" };
     case 95:
-      return "Thunderstorms light"; // Weather code 95 represents light thunderstorms
+      return { description: "Thunderstorm", icon: "fas fa-bolt" };
     case 96:
-      return "Thunderstorms moderate"; // Weather code 96 represents moderate thunderstorms
+      return { description: "Thunderstorm with slight hail", icon: "fas fa-bolt" };
     case 99:
-      return "Thunderstorms severe"; // Weather code 99 represents severe thunderstorms
+      return { description: "Thunderstorm with heavy hail", icon: "fas fa-bolt" };
     default:
-      return "Unknown weather"; // Default case for unrecognized weather codes
+      return { description: "Unknown weather", icon: "fas fa-question" };
   }
 }
 
-// Fetch weather data when the page loads
-window.onload = fetchWeatherData;
-
-// Function to handle the search functionality
-document.getElementById("search-button").addEventListener("click", async () => {
-  const searchQuery = document.getElementById("search-input").value; // Get the search query from the input field
-  try {
-    // Fetch coordinates for the location from the HERE API
-    const [latitude, longitude] = await getCoordinates(searchQuery);
-    // Update the API URL with the new coordinates and fetch the weather data
-    apiURL = `${apiURLBase}?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m`;
-    fetchWeatherData(); // Fetch weather data for the new location
-  } catch (error) {
-    console.error("Error getting coordinates:", error); // Log any errors
-    alert("Failed to get coordinates for the location."); // Alert the user about the failure
-  }
-});
-
-// Function to handle the current location functionality
-document.getElementById("location-button").addEventListener("click", () => {
-  // Get the user's current position
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const { latitude, longitude } = position.coords; // Extract latitude and longitude from the position object
-      // Update the API URL with the user's current coordinates and fetch the weather data
-      apiURL = `${apiURLBase}?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m`;
-      fetchWeatherData(); // Fetch weather data for the user's current location
-    },
-    (error) => {
-      console.error("Error getting location:", error); // Log any errors
-      alert("Unable to retrieve your location."); // Alert the user about the failure
-    }
-  );
-});
-
-// Function to get coordinates based on a location name using the HERE API
-async function getCoordinates(location) {
-  try {
-    // Fetch geocode data for the location
-    const response = await fetch(
-      `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(
-        location
-      )}&apiKey=${HERE_API_KEY}`
-    );
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    const data = await response.json();
-    // Return the latitude and longitude from the response
-    return [data.items[0].position.lat, data.items[0].position.lng];
-  } catch (error) {
-    console.error("Error fetching coordinates:", error); // Log any errors
-    throw error; // Re-throw the error to be caught in the search functionality
-  }
-}
-
-// Function to get location name from latitude and longitude using the HERE API
+// Function to get location name based on latitude and longitude using HERE API
 async function getLocationName(latitude, longitude) {
   try {
-    // Fetch reverse geocode data for the coordinates
-    const response = await fetch(
-      `https://geocode.search.hereapi.com/v1/revgeocode?lat=${latitude}&lon=${longitude}&apiKey=${HERE_API_KEY}`
-    );
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${latitude},${longitude}&apikey=${HERE_API_KEY}`;
+    const response = await fetch(url);
     const data = await response.json();
-    // Return the title of the location from the response
-    return data.items[0].title;
+    const locationName = data.items[0]?.address?.label ?? "Unknown location";
+    return locationName;
   } catch (error) {
-    console.error("Error fetching location name:", error); // Log any errors
-    return "Error retrieving location name"; // Return a default error message
+    console.error("Error fetching location name:", error);
+    return "Cape Town"; // Default to Cape Town in case of error
   }
 }
+
+// Function to handle search and update weather data based on the user's input
+async function handleSearch() {
+  const city = document.getElementById("search-input").value;
+  if (!city) return; // If the input is empty, do nothing
+
+  try {
+    // Fetch location data based on the user's input
+    const url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(city)}&apikey=${HERE_API_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    if (data.items.length === 0) throw new Error("City not found");
+
+    const { lat, lng } = data.items[0].position;
+    // Update API URL with the new location
+    apiURL = `${apiURLBase}?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m`;
+    await fetchWeatherData();
+  } catch (error) {
+    console.error("Error handling search:", error);
+    alert("Failed to find city. Please try again.");
+  }
+}
+
+// Attach event listener to the search button
+document.getElementById("search-button").addEventListener("click", handleSearch);
+
+// Fetch initial weather data for the default location
+fetchWeatherData();
