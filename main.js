@@ -1,12 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Define latitude and longitude for the weather API
   const latitude = -33.9258;
   const longitude = 18.4232;
-  
-  // Construct the API URL with query parameters
-  const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,time&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Africa/Johannesburg`;
+  const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Africa/Johannesburg`;
 
-  // Function to fetch data from the API
   const fetchData = async (url) => {
     try {
       const response = await fetch(url);
@@ -14,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      // Update current weather and daily forecast with the fetched data
       updateCurrentWeather(data.current);
       updateDailyForecast(data.daily, data.hourly);
     } catch (error) {
@@ -22,12 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Function to update the current weather section
   const updateCurrentWeather = (current) => {
     document.getElementById('current-temperature').textContent = `${current.temperature_2m} °C`;
     document.getElementById('current-wind-speed').textContent = `${current.wind_speed_10m} km/h`;
 
-    // Get weather description and icon
     const weatherDescription = getWeatherDescription(current.weathercode);
     const currentWeatherDiv = document.getElementById('current-weather');
 
@@ -37,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   };
 
-  // Function to update the daily forecast section
   const updateDailyForecast = (daily, hourly) => {
     const dailyList = document.getElementById('daily-list');
     dailyList.innerHTML = '';
@@ -48,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const weatherIcon = `<i class="${weatherDescription.icon}"></i>`;
 
-      // Create date object for the forecasted day
       const date = new Date();
       date.setDate(date.getDate() + i);
       const options = { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' };
@@ -77,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       dailyList.appendChild(listItem);
 
-      // Event listener to toggle hourly details
       listItem.querySelector('.expand-btn').addEventListener('click', () => {
         const hourlyDetailsDiv = listItem.querySelector('.hourly-details');
         const tbody = hourlyDetailsDiv.querySelector('tbody');
@@ -85,12 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const selectedDate = new Date();
         selectedDate.setDate(selectedDate.getDate() + i);
-        const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(startOfDay).setHours(23, 59, 59, 999);
 
         hourly.time.forEach((time, index) => {
           const hourlyDate = new Date(time);
-          if (hourlyDate >= startOfDay && hourlyDate <= endOfDay) {
+          if (hourlyDate.toDateString() === selectedDate.toDateString()) {
             const row = document.createElement('tr');
             row.innerHTML = `
               <td>${time}</td>
@@ -108,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Function to get weather description and icon based on weather code
   function getWeatherDescription(code) {
     switch (code) {
       case 0: return { description: "Clear sky", icon: "fas fa-sun" };
@@ -143,6 +130,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Fetch weather data from the API
   fetchData(apiUrl);
 });
