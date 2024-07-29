@@ -7,11 +7,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 
+
 </head>
 <body>
     <div class="container">
         <h1>Cape Town Weather App</h1>
-        <div id="location-name">Your Location</div>
+        
         <div id="current-weather">
             <p>
                 <strong>Current Temperature:</strong>
@@ -22,11 +23,7 @@
                 <span id="current-wind-speed">Loading...</span> km/h
             </p>
         </div>
-        <div id="search-section">
-            <input type="text" id="search-input" placeholder="Search for another place...">
-            <button id="search-button">Search</button>
-        </div>
-        <button id="location-button">Use My Location</button>
+        
         
         <h2>7-Day Forecast</h2>
         <div id="daily-forecast">
@@ -34,22 +31,7 @@
                 <li>Loading...</li>
             </ul>
         </div>
-        <h2>Hourly Forecast</h2>
-        <table id="hourly-forecast">
-            <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>Temperature (°C)</th>
-                    <th>Relative Humidity (%)</th>
-                    <th>Wind Speed (km/h)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4">Loading...</td>
-                </tr>
-            </tbody>
-        </table>
+        
     </div>
     <script src="main.js"></script>
 </body>
